@@ -1,13 +1,29 @@
 
 # TCP Port Scanner
 
-> A simple and fast multi-threaded TCP Port Scanner built with Python.
+Advanced multi-threaded TCP port scanner with banner grabbing capabilities.
 
 ----------
 
 ## Description
 
-This script allows you to scan a specified range of TCP ports on a target IP address. It utilizes multi-threading to speed up the scanning process and displays open ports in real-time.
+This script allows you to scan a specified range of TCP ports on a target IP address. It utilizes multi-threading to speed up the scanning process, captures basic service banners, and displays open ports in real-time. Graceful termination is supported via `Ctrl+C`.
+
+> [!NOTE]  
+This script scans a specified range of TCP ports on a target IP address.  
+It uses multi-threading for speed, captures basic service banners, and supports graceful shutdown with `Ctrl+C`.
+
+
+----------
+
+## Features
+
+-  Multi-threaded scanning using `ThreadPoolExecutor` for high performance
+-  Accepts single port, list of ports, or port range
+-  Banner grabbing via `HEAD / HTTP/1.0` request
+-  Graceful shutdown on `SIGINT` (`Ctrl+C`)
+-  Colored output for better readability
+-  Robust error handling for timeouts and refused connections
 
 ----------
 
@@ -15,74 +31,70 @@ This script allows you to scan a specified range of TCP ports on a target IP add
 
 ### Command Line Arguments:
 
--   `-t`, `--target` — Target IP address to scan.
-    
--   `-p`, `--port` — Port range to scan. This can be:
-    
-    -   A range (e.g., `1-100`)
-        
-    -   A list of ports separated by commas (e.g., `22,80,443`)
-        
-    -   A single port (e.g., `8080`)
-        
+> [!IMPORTANT]  
+The following arguments are required for execution:
+
+- `-t`, `--target` — Target IP address to scan.
+- `-p`, `--port` — Port range to scan. Accepted formats:
+  - A range (e.g., `1-100`)
+  - A comma-separated list (e.g., `22,80,443`)
+  - A single port (e.g., `8080`)
 
 ### Example:
 
+```bash
+python3 scanner.py -t 192.168.1.1 -p 20-80
+python3 scanner.py -t 192.168.1.1 -p 22,80,443
+python3 scanner.py -t 192.168.1.1 -p 8080
 ```
-python3 scanner.py -t 192.168.1.1 -p 1-100
-```
-
-> This will scan ports from 1 to 100 on the target `192.168.1.1`.
-
-----------
 
 ## Output
 
--   Open ports are displayed in green with the format:
+-   Open ports are displayed in **green**:
+
+`[+] Port 80  is  open` 
+
+-   Basic banners (HTTP headers or responses) are printed in **blue** when available:
     
 
-```
-[+] Port 22 open
-[+] Port 80 open
-```
 
--   Closed or filtered ports are ignored to reduce clutter.
-    
+`[+] Port 80  is  open  Server: Apache/2.4.41 (Ubuntu) Date: Mon, 27 May 2025  10:00:00 GMT` 
 
-----------
+-   Closed/filtered ports are silently ignored to reduce output clutter.
 
 ## How It Works
 
 1.  **Argument Parsing:**
     
-    -   Uses `argparse` to parse the target IP and port range from command line arguments.
+    -   Uses `argparse` to retrieve the target IP and port(s).
         
-2.  **Socket Creation:**
+2.  **Port Parsing:**
     
-    -   A TCP socket is created for each port to check its status.
+    -   Interprets ranges (`start-end`), comma-separated values (`p1,p2,...`), or single port.
         
-3.  **Multi-threading:**
+3.  **Threaded Scanning:**
     
-    -   Each port scan runs in its own thread for faster results.
+    -   Executes scans concurrently via `ThreadPoolExecutor` (up to 50 workers).
         
-4.  **Port Scanning:**
+4.  **Connection Attempt:**
     
-    -   If the connection is successful, the port is marked as **open**.
+    -   Sends a basic `HEAD` request if connection is successful.
         
-5.  **Output Display:**
+5.  **Banner Grabbing:**
     
-    -   Results are displayed in real-time as the scan progresses.
+    -   Reads and displays the response if available.
         
-
-----------
-
+6.  **Graceful Exit:**
+    
+    -   On `Ctrl+C`, all open sockets are closed before exit.
+ 
+ 
 ## Dependencies
 
--   `termcolor` for colored terminal output:
-    
+Install required module:
 
-```
-pip install termcolor
+```bash
+pip install termcolor` 
 ```
 
 ----------

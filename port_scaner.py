@@ -4,6 +4,21 @@ import socket
 from termcolor import colored
 import argparse
 import threading
+import signal
+import sys
+from concurrent.futures import ThreadPoolExecutor
+
+open_sockets = []
+
+def def_handler(sig, frame):
+    print(colored("[!] Exiting...", 'red'))
+
+    for socket in open_sockets:
+        socket.close()
+
+    sys.exit(1)
+
+signal.signal(signal.SIGINT, def_handler)
 
 def get_arguments():
     parser = argparse.ArgumentParser(description="TCP Port Scanner")
@@ -18,6 +33,8 @@ def create_socket():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(1)
 
+    open_sockets.append(s)
+
     return s
 
 def port_scanner(host, port):
@@ -26,11 +43,22 @@ def port_scanner(host, port):
     
     try:
         s.connect((host, port))
-        print(colored(f"[+] Port {port} open", 'green'))
-        
-        s.close()
+        s.sendall(b"HEAD / HTTP/1.0\r\n\r\n")
+        response = s.recv(1024)
+        response = response.decode(errors='ignore').split('\n')
+
+        if response:
+            print(colored(f"[+] Port {port} is open", "green"))
+
+            for line in response:
+                print(colored(f"{line}", "blue"))
+        else:
+            print(colored(f"[+] Port {port} is open", 'green'))
 
     except (socket.timeout, ConnectionRefusedError):
+        pass
+
+    finally:
         s.close()
 
 
@@ -46,16 +74,9 @@ def parse_ports(ports_str):
 
 
 def scan_ports(target, ports):
-
-    threads = []
-
-    for port in ports:
-        thread = threading.Thread(target=port_scanner(target, port))
-        threads.append(thread)
-        thread.start()
-
-    for thread in threads:
-        thread.join()
+    
+    with ThreadPoolExecutor(max_workers=50) as executor:
+        executor.map(lambda port: port_scanner(target, port), ports)
 
 def main():
 
